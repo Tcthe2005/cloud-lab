@@ -10,27 +10,31 @@ function App() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
 
-  // Lấy danh sách sinh viên từ Backend
-  useEffect(() => {
-    fetch('/api/students')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Không thể lấy dữ liệu sinh viên')
-        }
+  const [editingId, setEditingId] = useState(null)
 
-        return response.json()
-      })
-      .then((data) => {
-        setStudents(data)
-        setLoading(false)
-      })
-      .catch((err) => {
-        setError(err.message)
-        setLoading(false)
-      })
+  // Lấy danh sách sinh viên từ Backend
+  const fetchStudents = async () => {
+    try {
+      const response = await fetch('/api/students')
+
+      if (!response.ok) {
+        throw new Error('Không thể lấy dữ liệu sinh viên')
+      }
+
+      const data = await response.json()
+      setStudents(data)
+      setLoading(false)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchStudents()
   }, [])
 
-  // Thêm sinh viên
+  // Thêm hoặc cập nhật sinh viên
   const handleSubmit = async (e) => {
     e.preventDefault()
 
@@ -40,28 +44,56 @@ function App() {
     }
 
     try {
-      const response = await fetch('/api/students', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          studentId,
-          name,
-          email,
-        }),
-      })
+      if (editingId) {
+        // Cập nhật sinh viên
+        const response = await fetch(`/api/students/${editingId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            studentId,
+            name,
+            email,
+          }),
+        })
 
-      if (!response.ok) {
-        throw new Error('Không thể thêm sinh viên')
+        if (!response.ok) {
+          throw new Error('Không thể cập nhật sinh viên')
+        }
+
+        const updatedStudent = await response.json()
+
+        setStudents(
+          students.map((student) =>
+            student._id === editingId ? updatedStudent : student
+          )
+        )
+
+        setEditingId(null)
+      } else {
+        // Thêm sinh viên
+        const response = await fetch('/api/students', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            studentId,
+            name,
+            email,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Không thể thêm sinh viên')
+        }
+
+        const newStudent = await response.json()
+
+        setStudents([...students, newStudent])
       }
 
-      const newStudent = await response.json()
-
-      // Cập nhật danh sách trên giao diện
-      setStudents([...students, newStudent])
-
-      // Xóa dữ liệu trong form
       setStudentId('')
       setName('')
       setEmail('')
@@ -71,13 +103,60 @@ function App() {
     }
   }
 
+  // Chọn sinh viên để sửa
+  const handleEdit = (student) => {
+    setEditingId(student._id)
+    setStudentId(student.studentId)
+    setName(student.name)
+    setEmail(student.email)
+    setError('')
+  }
+
+  // Xóa sinh viên
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm(
+      'Bạn có chắc muốn xóa sinh viên này không?'
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/students/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Không thể xóa sinh viên')
+      }
+
+      setStudents(
+        students.filter((student) => student._id !== id)
+      )
+
+      setError('')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  // Hủy sửa
+  const handleCancel = () => {
+    setEditingId(null)
+    setStudentId('')
+    setName('')
+    setEmail('')
+    setError('')
+  }
+
   return (
     <div style={{ padding: '30px', fontFamily: 'Arial' }}>
       <h1>Danh sách sinh viên</h1>
 
-      {/* Form thêm sinh viên */}
+      {/* Form thêm / sửa sinh viên */}
       <form onSubmit={handleSubmit} style={{ marginBottom: '30px' }}>
-        <h2>Thêm sinh viên</h2>
+        <h2>{editingId ? 'Cập nhật sinh viên' : 'Thêm sinh viên'}</h2>
 
         <div style={{ marginBottom: '10px' }}>
           <input
@@ -107,8 +186,18 @@ function App() {
         </div>
 
         <button type="submit">
-          Thêm sinh viên
+          {editingId ? 'Cập nhật' : 'Thêm sinh viên'}
         </button>
+
+        {editingId && (
+          <button
+            type="button"
+            onClick={handleCancel}
+            style={{ marginLeft: '10px' }}
+          >
+            Hủy
+          </button>
+        )}
       </form>
 
       {loading && <p>Đang tải dữ liệu...</p>}
@@ -134,6 +223,7 @@ function App() {
               <th>MSSV</th>
               <th>Họ tên</th>
               <th>Email</th>
+              <th>Thao tác</th>
             </tr>
           </thead>
 
@@ -143,6 +233,19 @@ function App() {
                 <td>{student.studentId}</td>
                 <td>{student.name}</td>
                 <td>{student.email}</td>
+
+                <td>
+                  <button onClick={() => handleEdit(student)}>
+                    Sửa
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(student._id)}
+                    style={{ marginLeft: '10px' }}
+                  >
+                    Xóa
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

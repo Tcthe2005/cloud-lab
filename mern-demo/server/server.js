@@ -56,6 +56,62 @@ app.post("/api/students", async (req, res) => {
     }
 });
 
+// API cập nhật sinh viên
+app.put("/api/students/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { studentId, name, email } = req.body;
+
+        const updatedStudent = await Student.findByIdAndUpdate(
+            id,
+            {
+                studentId,
+                name,
+                email
+            },
+            {
+                new: true
+            }
+        );
+
+        if (!updatedStudent) {
+            return res.status(404).json({
+                message: "Không tìm thấy sinh viên"
+            });
+        }
+
+        res.json(updatedStudent);
+    } catch (error) {
+        res.status(500).json({
+            message: "Lỗi cập nhật sinh viên",
+            error: error.message
+        });
+    }
+});
+// API xóa sinh viên
+app.delete("/api/students/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const deletedStudent = await Student.findByIdAndDelete(id);
+
+        if (!deletedStudent) {
+            return res.status(404).json({
+                message: "Không tìm thấy sinh viên"
+            });
+        }
+
+        res.json({
+            message: "Xóa sinh viên thành công",
+            student: deletedStudent
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Lỗi xóa sinh viên",
+            error: error.message
+        });
+    }
+});
 // Kết nối MongoDB Atlas
 mongoose
     .connect(MONGODB_URI, {
