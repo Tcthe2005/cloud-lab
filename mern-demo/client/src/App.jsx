@@ -152,7 +152,9 @@ function App() {
 
   return (
     <div style={{ padding: '30px', fontFamily: 'Arial' }}>
-      <h1>Danh sách sinh viên</h1>
+      
+      {/* Tiêu đề phiên bản 2.0 - C80 */}
+      <h1>Danh sách sinh viên - Version 2.0</h1>
 
       {/* Form thêm / sửa sinh viên */}
       <form onSubmit={handleSubmit} style={{ marginBottom: '30px' }}>
